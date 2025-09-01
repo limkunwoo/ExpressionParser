@@ -135,6 +135,11 @@ struct TLogDivide : public TLogBinaryOperation<TLhs, TRhs>
 template<typename T>
 struct TOperatorTraits<TLogExpressionNode<T>>
 {
+	constexpr const static bool bAllowImplicitConversion = false;
+
+	template<typename T>
+	using Operand = TLogOperand<T>;
+
 	template<typename Lhs, typename Rhs>
 	using Add = TLogAdd<Lhs, Rhs>;
 

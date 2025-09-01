@@ -12,18 +12,17 @@ int main()
     
     TLogOperand<int> Op = 3;
     TLogOperand<float> Op2 = 5;
-     
-    TOperand<int> Op3 = 5;
-      
+    TLogOperand<float> Op3 = 5;
+    
+    TExpressionHolder Holder = Op + Op2 / (Op * Op2) ;
+    auto Value =  Holder.Expr.Eval();
 
-    Op = Op + Op2 / (Op * Op2);
-
+    Op3 = Op + Op2 / 2 * (Op * Op2) + 2;
     //TBaseTrait<TOperand<int>>::TBaseNode Node;
 
     //TOperand<int> A = 3;
     //TOperand<int> B = 3;
     //A + B;
-    //TOverflowSafeOperand<int> NonOverflow = 3;
 
     //Op3 = Op + Op2 + Op2;// +op4;
     
@@ -32,7 +31,6 @@ int main()
 
     TOperand<int> C = 55;
 
-    const TOperand<int>::BaseNodeType& Node = A;
     C = A + B - C * (A / B); 
 }
 
