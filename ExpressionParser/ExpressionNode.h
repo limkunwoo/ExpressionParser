@@ -26,6 +26,10 @@ template<typename T, template<typename> typename TBaseNode = TExpressionNode>
 struct TOperand : public TBaseNode<T>
 {
     using BaseNodeType = TBaseNode<T>;
+    
+    template<typename T>
+    using TTBaseNode = TBaseNode<T>;
+
     using TValue = TBaseNode<T>::TValue;
 protected:
     TValue Value;
@@ -54,6 +58,9 @@ template<typename TValue, template<typename> typename TBaseNode>
 struct TExpression : public TBaseNode<TValue>
 {
     using BaseNodeType = TBaseNode<TValue>;
+    template<typename T>
+    using TTBaseNode = TBaseNode<T>;
+
     virtual EExprNodeType GetNodeType() const final
     {
         return EExprNodeType::Expression;
@@ -177,117 +184,76 @@ auto ImpiclitConversionExprNode(const TIn& InValue)
 }
 
 template<typename TLeft, typename TRight>
-concept AllowImplicitConversion = 
-TOperatorTraits<typename std::remove_cvref_t<decltype(ImpiclitConversionExprNode<TRight>(std::declval<TLeft>()))>::BaseNodeType>::bAllowImplicitConversion
-    &&
-TOperatorTraits<typename std::remove_cvref_t<decltype(ImpiclitConversionExprNode<TLeft>(std::declval<TRight>()))>::BaseNodeType>::bAllowImplicitConversion;
-
-template<typename TLeft, typename TRight>
 struct TOperatorImplHelper
 {
-    using TLeftNode = std::remove_cvref_t<decltype(ImpiclitConversionExprNode<TRight>(std::declval<TLeft>()))>;
-    using TRightNode = std::remove_cvref_t<decltype(ImpiclitConversionExprNode<TLeft>(std::declval<TRight>()))>;
+    using TLeftNode = typename std::remove_cvref_t<decltype(ImpiclitConversionExprNode<TRight>(std::declval<TLeft>()))>;
+    using TRightNode = typename std::remove_cvref_t<decltype(ImpiclitConversionExprNode<TLeft>(std::declval<TRight>()))>;
 
-    using TLeftOperators = TOperatorTraits<typename TLeftNode::BaseNodeType>;
-    using TRightOperators = TOperatorTraits<typename TRightNode::BaseNodeType>;
+    using TLeftBaseNode = typename TLeftNode::BaseNodeType;
+    using TRightBaseNode = typename TRightNode::BaseNodeType;
+
+    constexpr static bool bIsSameNodeBase = std::is_same_v<typename TLeftNode::template TTBaseNode<TLeft>, typename TRightNode::template TTBaseNode<TLeft>>;
+    static_assert(bIsSameNodeBase, "LeftNode And RightNode is Different Type");
+
+    using TLhs = typename TLeftNode::TValue;
+    using TRhs = typename TRightNode::TValue;
+
+    using TLeftOperators = typename TOperatorTraits<typename TLeftNode::BaseNodeType>;
+    using TRightOperators = typename TOperatorTraits<typename TRightNode::BaseNodeType>;
 
     constexpr static bool bAllowImplicitConversion = TLeftOperators::bAllowImplicitConversion && TRightOperators::bAllowImplicitConversion;
 
-    constexpr static bool bBothExprNode = (IsExprNode<TLeft> && IsExprNode<TRight>);
-    constexpr static bool bSouldAutoDefinedOperator = bBothExprNode || ((IsExprNode<TLeft> || IsExprNode<TRight>) && bAllowImplicitConversion);
+    constexpr static bool bIsBothExprNode = (IsExprNode<TLeft> && IsExprNode<TRight>);
+    constexpr static bool bIsExclusiveOrExprNode = (IsExprNode<TLeft> && !IsExprNode<TRight>) || (!IsExprNode<TLeft> && IsExprNode<TRight>);;
+    
+    constexpr static bool bSouldAutoDefinedOperator = bIsExclusiveOrExprNode ? bAllowImplicitConversion : bIsBothExprNode;
 };
 
 template<
     typename TLeft,
     typename TRight
->  requires
-(
-(IsExprNode<TLeft> && IsExprNode<TRight>)
-    ||
-(IsExprNode<TLeft> || IsExprNode<TRight>)
-    &&
-   TOperatorImplHelper<TLeft, TRight>::bAllowImplicitConversion
-)
-
+>  requires (TOperatorImplHelper<TLeft, TRight>::bSouldAutoDefinedOperator)
 auto operator+(const TLeft& Lhs, const TRight& Rhs)
 { 
-    using TLeftNode = std::remove_cvref_t<decltype(ImpiclitConversionExprNode<TRight>(Lhs))>;
-    using TRightNode = std::remove_cvref_t<decltype(ImpiclitConversionExprNode<TLeft>(Rhs))>;
-
-    using TLhs = TLeftNode::TValue;
-    using TRhs = TRightNode::TValue;
-
-    using AddExpr = typename TOperatorTraits<typename TLeftNode::BaseNodeType>::template Add<TLhs, TRhs>;
-    using RightAddExpr = typename TOperatorTraits<typename TRightNode::BaseNodeType>::template Add<TLhs, TRhs>;
-
-    static_assert(std::is_same_v<AddExpr, RightAddExpr>, "LeftNode And RightNode is Different Type");
-    return AddExpr(ImpiclitConversionExprNode<TRightNode>(Lhs), ImpiclitConversionExprNode<TRightNode>(Rhs));
+    using TImplHelper = TOperatorImplHelper<TLeft, TRight>;
+    using Add = TImplHelper::TLeftOperators::template Add<typename TImplHelper::TLhs, typename TImplHelper::TRhs>;
+    return Add(ImpiclitConversionExprNode<typename TImplHelper::TRightNode>(Lhs), ImpiclitConversionExprNode<typename TImplHelper::TLeftNode>(Rhs));
 }
 
 template<
     typename TLeft,
     typename TRight
->  requires
-(IsExprNode<TLeft> || IsExprNode<TRight>)
-&&
-(requires() { TOperatorTraits<typename TLeft::BaseNodeType>::bAllowImplicitConversion; } || requires() { TOperatorTraits<typename TRight::BaseNodeType>::bAllowImplicitConversion; })
+>  requires (TOperatorImplHelper<TLeft, TRight>::bSouldAutoDefinedOperator)
 auto operator-(const TLeft& Lhs, const TRight& Rhs)
 {
-    using TLeftNode = std::remove_cvref_t<decltype(ImpiclitConversionExprNode<TRight>(Lhs))>;
-    using TRightNode = std::remove_cvref_t<decltype(ImpiclitConversionExprNode<TLeft>(Rhs))>;
+    using TImplHelper = TOperatorImplHelper<TLeft, TRight>;
 
-    using TLhs = TLeftNode::TValue;
-    using TRhs = TRightNode::TValue;
-
-    using SubExpr = typename TOperatorTraits<typename TLeftNode::BaseNodeType>::template Subtract<TLhs, TRhs>;
-    using RightSubExpr = typename TOperatorTraits<typename TRightNode::BaseNodeType>::template Subtract<TLhs, TRhs>;
-
-    static_assert(std::is_same_v<SubExpr, RightSubExpr>, "LeftNode And RightNode is Different Type");
-    return SubExpr(ImpiclitConversionExprNode<TRightNode>(Lhs), ImpiclitConversionExprNode<TRightNode>(Rhs));
+    using Subtract = TImplHelper::TLeftOperators::template Subtract<typename TImplHelper::TLhs, typename TImplHelper::TRhs>;
+    return Subtract(ImpiclitConversionExprNode<typename TImplHelper::TRightNode>(Lhs), ImpiclitConversionExprNode<typename TImplHelper::TLeftNode>(Rhs));
 }
 
 template<
     typename TLeft,
     typename TRight
->  requires
-(IsExprNode<TLeft> || IsExprNode<TRight>)
-&&
-(requires() { TOperatorTraits<typename TLeft::BaseNodeType>::bAllowImplicitConversion; } || requires() { TOperatorTraits<typename TRight::BaseNodeType>::bAllowImplicitConversion; })
+>  requires (TOperatorImplHelper<TLeft, TRight>::bSouldAutoDefinedOperator)
 auto operator*(const TLeft& Lhs, const TRight& Rhs)
 {
-    using TLeftNode = std::remove_cvref_t<decltype(ImpiclitConversionExprNode<TRight>(Lhs))>;
-    using TRightNode = std::remove_cvref_t<decltype(ImpiclitConversionExprNode<TLeft>(Rhs))>;
+    using TImplHelper = TOperatorImplHelper<TLeft, TRight>;
 
-    using TLhs = TLeftNode::TValue;
-    using TRhs = TRightNode::TValue;
-
-    using MulExpr = typename TOperatorTraits<typename TLeftNode::BaseNodeType>::template Multiply<TLhs, TRhs>;
-    using RightMulExpr = typename TOperatorTraits<typename TRightNode::BaseNodeType>::template Multiply<TLhs, TRhs>;
-
-    static_assert(std::is_same_v<MulExpr, RightMulExpr>, "LeftNode And RightNode is Different Type");
-    return MulExpr(ImpiclitConversionExprNode<TRightNode>(Lhs), ImpiclitConversionExprNode<TRightNode>(Rhs));
+    using Multiply = TImplHelper::TLeftOperators::template Multiply<typename TImplHelper::TLhs, typename TImplHelper::TRhs>;
+    return Multiply(ImpiclitConversionExprNode<typename TImplHelper::TRightNode>(Lhs), ImpiclitConversionExprNode<typename TImplHelper::TLeftNode>(Rhs));
 }
 
 template<
     typename TLeft,
     typename TRight
->  requires
-(IsExprNode<TLeft> || IsExprNode<TRight>)
-&&
-(requires() { TOperatorTraits<typename TLeft::BaseNodeType>::bAllowImplicitConversion; } || requires() { TOperatorTraits<typename TRight::BaseNodeType>::bAllowImplicitConversion; })
+>  requires (TOperatorImplHelper<TLeft, TRight>::bSouldAutoDefinedOperator)
 auto operator/(const TLeft& Lhs, const TRight& Rhs)
 {
-    using TLeftNode = std::remove_cvref_t<decltype(ImpiclitConversionExprNode<TRight>(Lhs))>;
-    using TRightNode = std::remove_cvref_t<decltype(ImpiclitConversionExprNode<TLeft>(Rhs))>;
+    using TImplHelper = TOperatorImplHelper<TLeft, TRight>;
 
-    using TLhs = TLeftNode::TValue;
-    using TRhs = TRightNode::TValue;
-
-    using DivideExpr = typename TOperatorTraits<typename TLeftNode::BaseNodeType>::template Divide<TLhs, TRhs>;
-    using RightDivideExpr = typename TOperatorTraits<typename TRightNode::BaseNodeType>::template Divide<TLhs, TRhs>;
-
-    static_assert(std::is_same_v<DivideExpr, DivideExpr>, "LeftNode And RightNode is Different Type");
-    return DivideExpr(ImpiclitConversionExprNode<TRightNode>(Lhs), ImpiclitConversionExprNode<TRightNode>(Rhs));
+    using Divide = TImplHelper::TLeftOperators::template Divide<typename TImplHelper::TLhs, typename TImplHelper::TRhs>;
+    return Divide(ImpiclitConversionExprNode<typename TImplHelper::TRightNode>(Lhs), ImpiclitConversionExprNode<typename TImplHelper::TLeftNode>(Rhs));
 }
 
 template<typename TExprNode>
