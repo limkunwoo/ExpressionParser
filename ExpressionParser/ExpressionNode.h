@@ -150,6 +150,7 @@ template<typename T>
 struct TOperatorTraits<TExpressionNode<T>>
 {
     constexpr const static bool bAllowImplicitConversion = true;
+    constexpr const static bool bUseCustomOperator = false;
 
     template<typename T>
     using Operand = TOperand<T, TExpressionNode>;
@@ -166,6 +167,7 @@ struct TOperatorTraits<TExpressionNode<T>>
     template<typename Lhs, typename Rhs>
     using Divide = TDivide<Lhs, Rhs>;
 };
+
 template<typename T>
 concept IsExprNode = (std::is_base_of_v<FExpressionNodeBase, T>);
 //return LValue;
@@ -206,7 +208,9 @@ struct TOperatorImplHelper
     constexpr static bool bIsBothExprNode = (IsExprNode<TLeft> && IsExprNode<TRight>);
     constexpr static bool bIsExclusiveOrExprNode = (IsExprNode<TLeft> && !IsExprNode<TRight>) || (!IsExprNode<TLeft> && IsExprNode<TRight>);;
     
-    constexpr static bool bSouldAutoDefinedOperator = bIsExclusiveOrExprNode ? bAllowImplicitConversion : bIsBothExprNode;
+    constexpr static bool bSouldAutoDefinedOperator = (bIsExclusiveOrExprNode ? bAllowImplicitConversion : bIsBothExprNode) 
+        && 
+        (!TLeftOperators::bUseCustomOperator && !TRightOperators::bUseCustomOperator);
 };
 
 template<

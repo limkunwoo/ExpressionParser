@@ -165,6 +165,7 @@ template<typename T>
 struct TOperatorTraits<TLogExpressionNode<T>>
 {
 	constexpr const static bool bAllowImplicitConversion = false;
+	constexpr const static bool bUseCustomOperator = false;
 
 	template<typename T>
 	using Operand = TLogOperand<T>;
