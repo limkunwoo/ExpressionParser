@@ -19,20 +19,20 @@ struct TExpressionNode : FExpressionNodeBase
     using TValue = T;
 
     virtual T Eval() const = 0;
+    virtual std::shared_ptr<TExpressionNode> Alloc() const = 0;
 };
 
 template<typename T, template<typename> typename TBaseNode = TExpressionNode>
 struct TOperand : public TBaseNode<T>
 {
     using BaseNodeType = TBaseNode<T>;
-
     using TValue = TBaseNode<T>::TValue;
-
+protected:
     TValue Value;
-
-    template<typename TVar>
-    TOperand(TVar&& InValue = TVar{}) : Value(std::forward<TVar>(InValue)) {}
-
+public:
+    template<typename... TConstructionVar>
+    TOperand(TConstructionVar&&... InValue) : Value(std::forward<TConstructionVar>(InValue)...) {}
+    
     virtual TValue Eval() const
     {
         return Value;
@@ -54,7 +54,6 @@ template<typename TValue, template<typename> typename TBaseNode>
 struct TExpression : public TBaseNode<TValue>
 {
     using BaseNodeType = TBaseNode<TValue>;
-
     virtual EExprNodeType GetNodeType() const final
     {
         return EExprNodeType::Expression;
@@ -64,9 +63,15 @@ struct TExpression : public TBaseNode<TValue>
 template<template<typename> class TBaseNode, typename TLhs, typename TRhs, typename TResult>
 struct TBinaryExpression : public TExpression<TResult, TBaseNode>
 {
+protected:
     const TBaseNode<TLhs>& Lhs;
     const TBaseNode<TRhs>& Rhs;
+
+    std::shared_ptr<TBaseNode<TLhs>> LhsPtr;
+    std::shared_ptr<TBaseNode<TRhs>> RhsPtr;
+public:
     TBinaryExpression(const TBaseNode<TLhs>& InLhs, const TBaseNode<TRhs>& InRhs) : Lhs(InLhs), Rhs(InRhs) {}
+    TBinaryExpression(std::shared_ptr<TBaseNode<TLhs>> InLhs, std::shared_ptr<TBaseNode<TRhs>> InRhs) : Lhs(*InLhs), Rhs(*InRhs), LhsPtr(InLhs), RhsPtr(InRhs) {}
 };
 
 template<typename TValue, typename TResult, template<typename> typename TBaseNode>
