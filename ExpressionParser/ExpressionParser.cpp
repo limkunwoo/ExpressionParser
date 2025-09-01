@@ -14,19 +14,21 @@ int main()
     TLogOperand<float> Op2 = 5;
     TLogOperand<float> Op3 = 5;
     
-    TExpressionHolder Holder = Op + Op2 / (Op * Op2) ;
+    bool R = TOperatorTraits<typename std::remove_cvref_t<decltype(ImpiclitConversionExprNode<TLogOperand<float>>(std::declval<TLogOperand<int>>()))>::BaseNodeType>::bAllowImplicitConversion;
+    TExpressionHolder Holder = Op + Op2 / (Op * Op2);
     auto Value =  Holder.Expr.Eval();
     auto Ptr = Holder.Expr.Alloc();
     Op3 = Op + Op2 / (Op * Op2);
 
     Op3 = Op + Op2 + Op2;// +op4;
     
-    //TOperand<int> A = 3;
-    //TOperand<int> B = 4;
+ 
+    TOperand<int> A = 3;
+    TOperand<int> B = 4;
 
-    //TOperand<int> C = 55;
+    TOperand<int> C = 55;
 
-    //C = A + B - C * (A / B) + 7; 
+    C = A + B - C * (A / B) + 7; 
 }
 
 // 프로그램 실행: <Ctrl+F5> 또는 [디버그] > [디버깅하지 않고 시작] 메뉴

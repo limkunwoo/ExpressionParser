@@ -19,7 +19,7 @@ struct TExpressionNode : FExpressionNodeBase
     using TValue = T;
 
     virtual T Eval() const = 0;
-    virtual std::shared_ptr<TExpressionNode> Alloc() const = 0;
+    virtual std::shared_ptr<TExpressionNode> Alloc() const { return std::shared_ptr<TExpressionNode>(); }
 };
 
 template<typename T, template<typename> typename TBaseNode = TExpressionNode>
@@ -176,15 +176,41 @@ auto ImpiclitConversionExprNode(const TIn& InValue)
     return TOperatorTraits<typename TOther::BaseNodeType>::template Operand<TIn>(InValue);
 }
 
+template<typename TLeft, typename TRight>
+concept AllowImplicitConversion = 
+TOperatorTraits<typename std::remove_cvref_t<decltype(ImpiclitConversionExprNode<TRight>(std::declval<TLeft>()))>::BaseNodeType>::bAllowImplicitConversion
+    &&
+TOperatorTraits<typename std::remove_cvref_t<decltype(ImpiclitConversionExprNode<TLeft>(std::declval<TRight>()))>::BaseNodeType>::bAllowImplicitConversion;
+
+template<typename TLeft, typename TRight>
+struct TOperatorImplHelper
+{
+    using TLeftNode = std::remove_cvref_t<decltype(ImpiclitConversionExprNode<TRight>(std::declval<TLeft>()))>;
+    using TRightNode = std::remove_cvref_t<decltype(ImpiclitConversionExprNode<TLeft>(std::declval<TRight>()))>;
+
+    using TLeftOperators = TOperatorTraits<typename TLeftNode::BaseNodeType>;
+    using TRightOperators = TOperatorTraits<typename TRightNode::BaseNodeType>;
+
+    constexpr static bool bAllowImplicitConversion = TLeftOperators::bAllowImplicitConversion && TRightOperators::bAllowImplicitConversion;
+
+    constexpr static bool bBothExprNode = (IsExprNode<TLeft> && IsExprNode<TRight>);
+    constexpr static bool bSouldAutoDefinedOperator = bBothExprNode || ((IsExprNode<TLeft> || IsExprNode<TRight>) && bAllowImplicitConversion);
+};
+
 template<
     typename TLeft,
     typename TRight
->  requires 
+>  requires
+(
+(IsExprNode<TLeft> && IsExprNode<TRight>)
+    ||
 (IsExprNode<TLeft> || IsExprNode<TRight>)
     &&
-(requires() { TOperatorTraits<typename TLeft::BaseNodeType>::bAllowImplicitConversion; } || requires() { TOperatorTraits<typename TRight::BaseNodeType>::bAllowImplicitConversion; })
+   TOperatorImplHelper<TLeft, TRight>::bAllowImplicitConversion
+)
+
 auto operator+(const TLeft& Lhs, const TRight& Rhs)
-{   
+{ 
     using TLeftNode = std::remove_cvref_t<decltype(ImpiclitConversionExprNode<TRight>(Lhs))>;
     using TRightNode = std::remove_cvref_t<decltype(ImpiclitConversionExprNode<TLeft>(Rhs))>;
 
