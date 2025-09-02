@@ -17,7 +17,6 @@ int main()
     bool R = TOperatorTraits<typename std::remove_cvref_t<decltype(ImpiclitConversionExprNode<TLogOperand<float>>(std::declval<TLogOperand<int>>()))>::BaseNodeType>::bAllowImplicitConversion;
     TExpressionHolder Holder = Op - Op2 / (Op * Op2);
     auto Value =  Holder.Expr.Eval();
-    auto Ptr = Holder.Expr.Alloc();
     Op3 = Op + Op2 / (Op * Op2);
 
     Op3 = Op + Op2 + Op2;// +op4;

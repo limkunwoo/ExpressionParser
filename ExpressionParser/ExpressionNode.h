@@ -19,7 +19,6 @@ struct TExpressionNode : FExpressionNodeBase
     using TValue = T;
 
     virtual T Eval() const = 0;
-    virtual std::shared_ptr<TExpressionNode> Alloc() const { return std::shared_ptr<TExpressionNode>(); }
 };
 
 template<typename T, template<typename> typename TBaseNode = TExpressionNode>

@@ -20,10 +20,6 @@ struct TLogOperand : public TOperand<T, TLogExpressionNode>
 	{
 		std::cout << this->Value;
 	}
-	virtual std::shared_ptr<TExpressionNode<T>> Alloc() const override
-	{
-		return std::make_shared<TLogOperand<T>>(this->Value);
-	}
 	template<typename TRhs>
 	TLogOperand<T>& operator=(const TLogExpressionNode<TRhs>& Rhs)
 	{
@@ -38,7 +34,7 @@ struct TLogOperand : public TOperand<T, TLogExpressionNode>
 	}
 };
 
-template<typename TLhs, typename TRhs, typename TResult = decltype(std::declval<TLhs>() + std::declval<TRhs>())>
+template<typename TLhs, typename TRhs, typename TResult>
 struct TLogBinaryOperation : public TBinaryExpression<TLogExpressionNode, TLhs, TRhs, TResult>
 {
 	using Super = TBinaryExpression<TLogExpressionNode, TLhs, TRhs, TResult>;
@@ -72,7 +68,7 @@ struct TLogBinaryOperation : public TBinaryExpression<TLogExpressionNode, TLhs, 
 };
 
 template<typename TLhs, typename TRhs, typename TResult = decltype(std::declval<TLhs>() + std::declval<TRhs>())>
-struct TLogAdd : public TLogBinaryOperation<TLhs, TRhs>
+struct TLogAdd : public TLogBinaryOperation<TLhs, TRhs, TResult>
 {
 	using Super = TLogBinaryOperation<TLhs, TRhs>;
 	using Super::Super;
@@ -85,16 +81,10 @@ struct TLogAdd : public TLogBinaryOperation<TLhs, TRhs>
 	{
 		return this->Lhs.Eval() + this->Rhs.Eval();
 	}
-	virtual std::shared_ptr<TExpressionNode<TResult>> Alloc() const override
-	{
-		std::shared_ptr<TLogExpressionNode<TLhs>> LhsPtr = std::static_pointer_cast<TLogExpressionNode<TLhs>>(this->Lhs.Alloc());
-		std::shared_ptr<TLogExpressionNode<TRhs>> RhsPtr = std::static_pointer_cast<TLogExpressionNode<TRhs>>(this->Rhs.Alloc());
-		return std::make_shared<TLogAdd>(LhsPtr, RhsPtr);
-	}
 };
 
-template<typename TLhs, typename TRhs, typename TResult = decltype(std::declval<TLhs>() + std::declval<TRhs>())>
-struct TLogSubtract : public TLogBinaryOperation<TLhs, TRhs>
+template<typename TLhs, typename TRhs, typename TResult = decltype(std::declval<TLhs>() - std::declval<TRhs>())>
+struct TLogSubtract : public TLogBinaryOperation<TLhs, TRhs, TResult>
 {
 	using Super = TLogBinaryOperation<TLhs, TRhs>;
 	using Super::Super;
@@ -107,16 +97,10 @@ struct TLogSubtract : public TLogBinaryOperation<TLhs, TRhs>
 	{
 		return this->Lhs.Eval() - this->Rhs.Eval();
 	}
-	virtual std::shared_ptr<TExpressionNode<TResult>> Alloc() const override
-	{
-		std::shared_ptr<TLogExpressionNode<TLhs>> LhsPtr = std::static_pointer_cast<TLogExpressionNode<TLhs>>(this->Lhs.Alloc());
-		std::shared_ptr<TLogExpressionNode<TRhs>> RhsPtr = std::static_pointer_cast<TLogExpressionNode<TRhs>>(this->Rhs.Alloc());
-		return std::make_shared<TLogSubtract>(LhsPtr, RhsPtr);
-	}
 };
 
-template<typename TLhs, typename TRhs, typename TResult = decltype(std::declval<TLhs>() + std::declval<TRhs>())>
-struct TLogMultiply : public TLogBinaryOperation<TLhs, TRhs>
+template<typename TLhs, typename TRhs, typename TResult = decltype(std::declval<TLhs>() * std::declval<TRhs>())>
+struct TLogMultiply : public TLogBinaryOperation<TLhs, TRhs, TResult>
 {
 	using Super = TLogBinaryOperation<TLhs, TRhs>;
 	using Super::Super;
@@ -129,17 +113,10 @@ struct TLogMultiply : public TLogBinaryOperation<TLhs, TRhs>
 	{
 		return this->Lhs.Eval() * this->Rhs.Eval();
 	}
-
-	virtual std::shared_ptr<TExpressionNode<TResult>> Alloc() const override
-	{
-		std::shared_ptr<TLogExpressionNode<TLhs>> LhsPtr = std::static_pointer_cast<TLogExpressionNode<TLhs>>(this->Lhs.Alloc());
-		std::shared_ptr<TLogExpressionNode<TRhs>> RhsPtr = std::static_pointer_cast<TLogExpressionNode<TRhs>>(this->Rhs.Alloc());
-		return std::make_shared<TLogMultiply>(LhsPtr, RhsPtr);
-	}
 };
 
-template<typename TLhs, typename TRhs, typename TResult = decltype(std::declval<TLhs>() + std::declval<TRhs>())>
-struct TLogDivide : public TLogBinaryOperation<TLhs, TRhs>
+template<typename TLhs, typename TRhs, typename TResult = decltype(std::declval<TLhs>() / std::declval<TRhs>())>
+struct TLogDivide : public TLogBinaryOperation<TLhs, TRhs, TResult>
 {
 	using Super = TLogBinaryOperation<TLhs, TRhs>;
 	using Super::Super;
@@ -151,13 +128,6 @@ struct TLogDivide : public TLogBinaryOperation<TLhs, TRhs>
 	virtual TResult Eval() const
 	{
 		return this->Lhs.Eval() / this->Rhs.Eval();
-	}
-
-	virtual std::shared_ptr<TExpressionNode<TResult>> Alloc() const override
-	{
-		std::shared_ptr<TLogExpressionNode<TLhs>> LhsPtr = std::static_pointer_cast<TLogExpressionNode<TLhs>>(this->Lhs.Alloc());
-		std::shared_ptr<TLogExpressionNode<TRhs>> RhsPtr = std::static_pointer_cast<TLogExpressionNode<TRhs>>(this->Rhs.Alloc());
-		return std::make_shared<TLogDivide>(LhsPtr, RhsPtr);
 	}
 };
 
